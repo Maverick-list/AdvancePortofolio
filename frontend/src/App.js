@@ -1415,3 +1415,342 @@ const GalleryPage = () => {
     </motion.div>
   );
 };
+
+// ==================== ADMIN PAGES ====================
+
+// Admin Login
+const AdminLogin = () => {
+  const [credentials, setCredentials] = useState({ username: '', password: '' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const { login, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/admin/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const success = await login(credentials.username, credentials.password);
+      if (success) {
+        navigate('/admin/dashboard');
+      } else {
+        setError('Invalid credentials');
+      }
+    } catch (err) {
+      setError('Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0 animated-gradient opacity-40" />
+      
+      {/* Ambient Blobs */}
+      <motion.div
+        animate={{ 
+          y: [-20, 20, -20],
+          scale: [1, 1.1, 1],
+        }}
+        transition={{ duration: 8, repeat: Infinity }}
+        className="absolute top-20 left-20 w-64 h-64 rounded-full bg-royal-purple/20 blur-3xl"
+      />
+      <motion.div
+        animate={{ 
+          y: [20, -20, 20],
+          scale: [1.1, 1, 1.1],
+        }}
+        transition={{ duration: 10, repeat: Infinity }}
+        className="absolute bottom-20 right-20 w-80 h-80 rounded-full bg-hot-pink/20 blur-3xl"
+      />
+      
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="relative z-10 w-full max-w-md"
+      >
+        <Card className="border-0 shadow-2xl overflow-hidden" style={{
+          background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(240,230,255,0.95) 100%)',
+        }}>
+          {/* Gradient Header */}
+          <div className="h-2 gradient-bg" />
+          
+          <CardHeader className="text-center pb-2 pt-8">
+            <motion.div 
+              className="mx-auto mb-4"
+              whileHover={{ scale: 1.05 }}
+            >
+              <AnimatedLogo />
+            </motion.div>
+            <CardTitle className="text-2xl font-display">Welcome Back</CardTitle>
+            <CardDescription>Sign in to your admin dashboard</CardDescription>
+          </CardHeader>
+          <CardContent className="px-8 pb-8">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm flex items-center gap-2"
+                >
+                  <AlertCircle className="w-4 h-4" />
+                  {error}
+                </motion.div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  value={credentials.username}
+                  onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
+                  placeholder="Enter your username"
+                  className="border-purple-200 focus:border-royal-purple"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={credentials.password}
+                  onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
+                  placeholder="Enter your password"
+                  className="border-purple-200 focus:border-royal-purple"
+                  required
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full gradient-bg text-white py-6"
+                disabled={loading}
+              >
+                {loading ? (
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"
+                  />
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Sign In
+                  </>
+                )}
+              </Button>
+            </form>
+          </CardContent>
+          <CardFooter className="justify-center pb-6">
+            <Link to="/" className="text-sm text-muted-foreground hover:text-royal-purple transition-colors flex items-center gap-1">
+              <ChevronRight className="w-4 h-4 rotate-180" />
+              Back to Portfolio
+            </Link>
+          </CardFooter>
+        </Card>
+      </motion.div>
+    </div>
+  );
+};
+
+// Admin Layout
+const AdminLayout = ({ children }) => {
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [notifications, setNotifications] = useState([]);
+  const { logout, token } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const data = await api.get('/notifications', token);
+        setNotifications(data.filter(n => !n.read).slice(0, 5));
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+      }
+    };
+    if (token) fetchNotifications();
+  }, [token]);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/admin/login');
+  };
+
+  const menuItems = [
+    { path: '/admin/dashboard', icon: Home, label: 'Overview' },
+    { path: '/admin/portfolio', icon: User, label: 'Portfolio Editor' },
+    { path: '/admin/ai-agent', icon: Bot, label: 'AI Personal Agent' },
+    { path: '/admin/tasks', icon: Calendar, label: 'Tasks & Reminders' },
+    { path: '/admin/writing', icon: FileText, label: 'Writing Studio' },
+    { path: '/admin/gallery', icon: Image, label: 'Photo Gallery' },
+    { path: '/admin/settings', icon: Settings, label: 'Settings' },
+  ];
+
+  return (
+    <div className="min-h-screen flex" style={{
+      background: 'linear-gradient(135deg, rgba(240,235,255,1) 0%, rgba(255,245,250,1) 50%, rgba(240,235,255,1) 100%)',
+    }}>
+      {/* Sidebar */}
+      <motion.aside
+        initial={false}
+        animate={{ width: sidebarOpen ? 280 : 80 }}
+        className="fixed left-0 top-0 h-screen z-40 flex flex-col"
+        style={{
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(250,245,255,0.95) 100%)',
+          borderRight: '1px solid rgba(106, 0, 255, 0.1)',
+        }}
+      >
+        {/* Logo */}
+        <div className="p-4 border-b border-purple-100 flex items-center justify-between">
+          {sidebarOpen ? (
+            <AnimatedLogo />
+          ) : (
+            <motion.div 
+              className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center"
+              whileHover={{ scale: 1.05 }}
+            >
+              <Sparkles className="w-5 h-5 text-white" />
+            </motion.div>
+          )}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 rounded-lg hover:bg-purple-100 transition-colors"
+          >
+            {sidebarOpen ? <ChevronRight className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
+
+        {/* Navigation */}
+        <ScrollArea className="flex-1 py-4">
+          <nav className="px-3 space-y-1">
+            {menuItems.map((item, index) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <motion.div
+                  key={item.path}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                >
+                  <Link
+                    to={item.path}
+                    className={\`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 \${
+                      isActive
+                        ? 'sidebar-active bg-gradient-to-r from-royal-purple/10 to-transparent text-royal-purple font-medium'
+                        : 'text-muted-foreground hover:bg-purple-50 hover:text-foreground'
+                    }\`}
+                  >
+                    <item.icon className={\`w-5 h-5 flex-shrink-0 \${isActive ? 'text-royal-purple' : ''}\`} />
+                    {sidebarOpen && <span>{item.label}</span>}
+                  </Link>
+                </motion.div>
+              );
+            })}
+          </nav>
+        </ScrollArea>
+
+        {/* Logout */}
+        <div className="p-4 border-t border-purple-100">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-3 py-3 rounded-lg w-full text-muted-foreground hover:bg-red-50 hover:text-destructive transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            {sidebarOpen && <span>Logout</span>}
+          </button>
+        </div>
+      </motion.aside>
+
+      {/* Main Content */}
+      <main className={\`flex-1 \${sidebarOpen ? 'ml-[280px]' : 'ml-20'} transition-all duration-300\`}>
+        {/* Top Bar */}
+        <header className="sticky top-0 z-30 px-6 py-3 glass">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <motion.h1 
+                className="text-xl font-semibold"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                {menuItems.find(item => item.path === location.pathname)?.label || 'Dashboard'}
+              </motion.h1>
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Theme Toggle */}
+              <motion.button
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="p-2 rounded-lg hover:bg-purple-100 transition-colors"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </motion.button>
+
+              {/* Notifications */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="relative p-2 rounded-lg hover:bg-purple-100 transition-colors">
+                    <Bell className="w-5 h-5" />
+                    {notifications.length > 0 && (
+                      <motion.span 
+                        className="absolute top-1 right-1 w-2 h-2 rounded-full bg-hot-pink"
+                        animate={{ scale: [1, 1.2, 1] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      />
+                    )}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-80">
+                  <div className="p-3 border-b">
+                    <h3 className="font-semibold">Notifications</h3>
+                  </div>
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-muted-foreground">
+                      No new notifications
+                    </div>
+                  ) : (
+                    notifications.map((n) => (
+                      <DropdownMenuItem key={n.id} className="p-3">
+                        <div>
+                          <p className="font-medium text-sm">{n.title}</p>
+                          <p className="text-xs text-muted-foreground">{n.message}</p>
+                        </div>
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Profile */}
+              <motion.div whileHover={{ scale: 1.05 }}>
+                <Avatar className="w-9 h-9 border-2 border-royal-purple/20">
+                  <AvatarImage src={PROFILE_PHOTO} />
+                  <AvatarFallback className="gradient-bg text-white">MA</AvatarFallback>
+                </Avatar>
+              </motion.div>
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <div className="p-6">
+          <AnimatePresence mode="wait">
+            {children}
+          </AnimatePresence>
+        </div>
+      </main>
+    </div>
+  );
+};
