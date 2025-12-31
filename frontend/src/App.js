@@ -584,3 +584,411 @@ const PublicNavbar = () => {
     </motion.header>
   );
 };
+
+// ==================== PUBLIC PAGES ====================
+
+// Homepage
+const HomePage = () => {
+  const [portfolio, setPortfolio] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPortfolio = async () => {
+      try {
+        const data = await api.get('/portfolio');
+        // Override with custom profile photo
+        data.avatar_url = PROFILE_PHOTO;
+        setPortfolio(data);
+      } catch (error) {
+        console.error('Error fetching portfolio:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPortfolio();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center gradient-bg-page">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          className="w-16 h-16 rounded-full border-4 border-royal-purple border-t-hot-pink"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <motion.div
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="min-h-screen"
+    >
+      {/* Hero Section */}
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+        {/* Animated Background */}
+        <div className="absolute inset-0 animated-gradient opacity-90" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/80" />
+        
+        {/* Ambient Blobs */}
+        <motion.div
+          animate={{ 
+            y: [-30, 30, -30], 
+            x: [-20, 20, -20],
+            scale: [1, 1.1, 1]
+          }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-20 left-10 w-64 h-64 rounded-full bg-white/10 blur-3xl ambient-blob"
+        />
+        <motion.div
+          animate={{ 
+            y: [30, -30, 30], 
+            x: [20, -20, 20],
+            scale: [1.1, 1, 1.1]
+          }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute bottom-40 right-20 w-80 h-80 rounded-full bg-hot-pink/20 blur-3xl ambient-blob"
+        />
+        <motion.div
+          animate={{ 
+            y: [-20, 40, -20],
+            scale: [1, 1.2, 1]
+          }}
+          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-1/2 left-1/3 w-48 h-48 rounded-full bg-soft-lavender/20 blur-3xl ambient-blob"
+        />
+
+        <div className="container mx-auto px-4 relative z-10 text-center">
+          <motion.div
+            variants={staggerContainer}
+            initial="initial"
+            animate="animate"
+            className="max-w-4xl mx-auto"
+          >
+            <motion.div 
+              variants={fadeInUp} 
+              className="mb-8"
+              whileHover={{ scale: 1.05 }}
+            >
+              <motion.div
+                animate={{ 
+                  boxShadow: [
+                    "0 0 30px rgba(106, 0, 255, 0.3)",
+                    "0 0 50px rgba(255, 94, 207, 0.4)",
+                    "0 0 30px rgba(106, 0, 255, 0.3)"
+                  ]
+                }}
+                transition={{ duration: 3, repeat: Infinity }}
+                className="inline-block rounded-full p-1 bg-gradient-to-r from-royal-purple via-hot-pink to-royal-purple"
+              >
+                <Avatar className="w-36 h-36 border-4 border-white/30">
+                  <AvatarImage src={PROFILE_PHOTO} alt={portfolio?.name} />
+                  <AvatarFallback className="text-4xl gradient-bg text-white">
+                    {portfolio?.name?.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+              </motion.div>
+            </motion.div>
+
+            <motion.h1
+              variants={fadeInUp}
+              className="text-5xl md:text-7xl font-display font-bold text-white mb-6 drop-shadow-lg"
+            >
+              {portfolio?.name || 'Miryam Abida'}
+            </motion.h1>
+
+            <motion.p
+              variants={fadeInUp}
+              className="text-xl md:text-2xl text-white/90 mb-8 font-light"
+            >
+              {portfolio?.title || 'Creative Developer & Designer'}
+            </motion.p>
+
+            <motion.div variants={fadeInUp} className="flex flex-wrap gap-4 justify-center">
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button
+                  size="lg"
+                  className="btn-gradient text-white px-8 py-6 text-lg rounded-full shadow-lg"
+                  onClick={() => document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' })}
+                >
+                  Explore My Work
+                  <ChevronRight className="ml-2 w-5 h-5" />
+                </Button>
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="bg-white/10 border-white/30 text-white hover:bg-white/20 px-8 py-6 text-lg rounded-full backdrop-blur"
+                >
+                  <Mail className="mr-2 w-5 h-5" />
+                  Get in Touch
+                </Button>
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        </div>
+
+        {/* Scroll Indicator */}
+        <motion.div
+          animate={{ y: [0, 15, 0] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          className="absolute bottom-10 left-1/2 -translate-x-1/2"
+        >
+          <ChevronDown className="w-8 h-8 text-white/60" />
+        </motion.div>
+      </section>
+
+      {/* About Section */}
+      {portfolio?.sections_visible?.about !== false && (
+        <section id="about" className="py-24 gradient-bg-soft">
+          <div className="container mx-auto px-4">
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="max-w-4xl mx-auto text-center"
+            >
+              <Badge className="mb-4 gradient-bg text-white px-4 py-1">About Me</Badge>
+              <h2 className="text-4xl md:text-5xl font-display font-bold mb-6 gradient-text">
+                Hello, I'm {portfolio?.name?.split(' ')[0] || 'Miryam'}
+              </h2>
+              <p className="text-lg text-muted-foreground leading-relaxed">
+                {portfolio?.bio || "I'm a passionate developer who loves creating beautiful, functional digital experiences."}
+              </p>
+            </motion.div>
+          </div>
+        </section>
+      )}
+
+      {/* Skills Section */}
+      {portfolio?.sections_visible?.skills !== false && portfolio?.skills?.length > 0 && (
+        <section className="py-24 gradient-bg-page">
+          <div className="container mx-auto px-4">
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-16"
+            >
+              <Badge className="mb-4 gradient-bg text-white px-4 py-1">My Expertise</Badge>
+              <h2 className="text-4xl md:text-5xl font-display font-bold gradient-text">
+                Skills & Technologies
+              </h2>
+            </motion.div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+              {portfolio?.skills?.map((skill, index) => (
+                <motion.div
+                  key={skill.name}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  whileHover={{ y: -5 }}
+                >
+                  <Card className="card-hover border-0 shadow-card overflow-hidden">
+                    <CardContent className="pt-6">
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="font-semibold">{skill.name}</span>
+                        <Badge variant="outline" className="text-royal-purple border-royal-purple">
+                          {skill.category}
+                        </Badge>
+                      </div>
+                      <div className="relative h-2 bg-purple-100 rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          whileInView={{ width: \`\${skill.level}%\` }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 1, delay: index * 0.1 }}
+                          className="absolute inset-y-0 left-0 gradient-bg rounded-full"
+                        />
+                      </div>
+                      <span className="text-sm text-muted-foreground mt-2 block text-right">
+                        {skill.level}%
+                      </span>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Experience Section */}
+      {portfolio?.sections_visible?.experience !== false && portfolio?.experience?.length > 0 && (
+        <section className="py-24 gradient-bg-soft">
+          <div className="container mx-auto px-4">
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-16"
+            >
+              <Badge className="mb-4 gradient-bg text-white px-4 py-1">Career Journey</Badge>
+              <h2 className="text-4xl md:text-5xl font-display font-bold gradient-text">
+                Experience
+              </h2>
+            </motion.div>
+
+            <div className="max-w-3xl mx-auto space-y-6">
+              {portfolio?.experience?.map((exp, index) => (
+                <motion.div
+                  key={exp.id}
+                  initial={{ opacity: 0, x: index % 2 === 0 ? -50 : 50 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <Card className="card-hover border-l-4 border-l-royal-purple">
+                    <CardContent className="pt-6">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
+                        <h3 className="text-xl font-bold">{exp.title}</h3>
+                        <Badge variant="secondary" className="w-fit">{exp.period}</Badge>
+                      </div>
+                      <p className="text-royal-purple font-medium mb-2">{exp.company}</p>
+                      <p className="text-muted-foreground">{exp.description}</p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Projects Section */}
+      {portfolio?.sections_visible?.projects !== false && portfolio?.projects?.length > 0 && (
+        <section className="py-24 gradient-bg-page">
+          <div className="container mx-auto px-4">
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-16"
+            >
+              <Badge className="mb-4 gradient-bg text-white px-4 py-1">Portfolio</Badge>
+              <h2 className="text-4xl md:text-5xl font-display font-bold gradient-text">
+                Featured Projects
+              </h2>
+            </motion.div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+              {portfolio?.projects?.map((project, index) => (
+                <motion.div
+                  key={project.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  whileHover={{ y: -10 }}
+                >
+                  <Card className="card-hover overflow-hidden border-0 shadow-card group h-full">
+                    <div className="relative h-48 overflow-hidden">
+                      <motion.img
+                        src={project.image}
+                        alt={project.title}
+                        className="w-full h-full object-cover"
+                        whileHover={{ scale: 1.1 }}
+                        transition={{ duration: 0.5 }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    </div>
+                    <CardContent className="pt-4">
+                      <h3 className="text-xl font-bold mb-2">{project.title}</h3>
+                      <p className="text-muted-foreground text-sm mb-4">{project.description}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {project.tags?.map((tag) => (
+                          <Badge key={tag} variant="outline" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Contact Section */}
+      {portfolio?.sections_visible?.contact !== false && (
+        <section className="py-24 gradient-bg-soft">
+          <div className="container mx-auto px-4">
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="max-w-4xl mx-auto text-center"
+            >
+              <Badge className="mb-4 gradient-bg text-white px-4 py-1">Get in Touch</Badge>
+              <h2 className="text-4xl md:text-5xl font-display font-bold mb-6 gradient-text">
+                Let's Work Together
+              </h2>
+              <p className="text-lg text-muted-foreground mb-12">
+                Have a project in mind? I'd love to hear from you.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {portfolio?.contact?.email && (
+                  <motion.div whileHover={{ y: -5 }}>
+                    <Card className="card-hover">
+                      <CardContent className="pt-6 text-center">
+                        <div className="w-12 h-12 rounded-full gradient-bg flex items-center justify-center mx-auto mb-3">
+                          <Mail className="w-6 h-6 text-white" />
+                        </div>
+                        <p className="font-medium">{portfolio.contact.email}</p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )}
+                {portfolio?.contact?.location && (
+                  <motion.div whileHover={{ y: -5 }}>
+                    <Card className="card-hover">
+                      <CardContent className="pt-6 text-center">
+                        <div className="w-12 h-12 rounded-full gradient-bg flex items-center justify-center mx-auto mb-3">
+                          <Home className="w-6 h-6 text-white" />
+                        </div>
+                        <p className="font-medium">{portfolio.contact.location}</p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )}
+                {portfolio?.contact?.phone && (
+                  <motion.div whileHover={{ y: -5 }}>
+                    <Card className="card-hover">
+                      <CardContent className="pt-6 text-center">
+                        <div className="w-12 h-12 rounded-full gradient-bg flex items-center justify-center mx-auto mb-3">
+                          <MessageCircle className="w-6 h-6 text-white" />
+                        </div>
+                        <p className="font-medium">{portfolio.contact.phone}</p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        </section>
+      )}
+
+      {/* Footer */}
+      <footer className="py-8 border-t gradient-bg-soft">
+        <div className="container mx-auto px-4 text-center">
+          <p className="text-muted-foreground">
+            © {new Date().getFullYear()} {portfolio?.name}. All rights reserved.
+          </p>
+        </div>
+      </footer>
+    </motion.div>
+  );
+};
