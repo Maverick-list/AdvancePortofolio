@@ -968,3 +968,253 @@ const PortfolioEditor = () => {
     </motion.div>
   );
 };
+
+// AI Agent Page
+const AIAgentPage = () => {
+  const { token } = useAuth();
+  const [messages, setMessages] = useState([]);
+  const [memories, setMemories] = useState([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => { api.get('/ai/memory', token).then(setMemories).catch(console.error); }, [token]);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  const sendMessage = async () => {
+    if (!input.trim() || loading) return;
+    setMessages(prev => [...prev, { role: 'user', content: input }]);
+    setInput('');
+    setLoading(true);
+    try {
+      const response = await api.post('/ai/chat', { message: input }, token);
+      setMessages(prev => [...prev, { role: 'assistant', content: response.response }]);
+      const memData = await api.get('/ai/memory', token);
+      setMemories(memData);
+    } catch { setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.' }]); }
+    finally { setLoading(false); }
+  };
+
+  const clearMemory = async () => { try { await api.delete('/ai/memory', token); setMemories([]); } catch {} };
+
+  return (
+    <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit" className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
+      <div className="lg:col-span-2">
+        <Card className="border-0 shadow-card h-full flex flex-col overflow-hidden">
+          <CardHeader className="gradient-bg text-white">
+            <div className="flex items-center gap-3">
+              <motion.div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center" animate={{ boxShadow: ["0 0 10px rgba(255,255,255,0.3)", "0 0 20px rgba(255,255,255,0.5)", "0 0 10px rgba(255,255,255,0.3)"] }} transition={{ duration: 2, repeat: Infinity }}><Bot className="w-6 h-6 text-white" /></motion.div>
+              <div><CardTitle className="text-white">AI Personal Assistant</CardTitle><CardDescription className="text-white/70">Your intelligent helper with memory</CardDescription></div>
+            </div>
+          </CardHeader>
+          <ScrollArea className="flex-1 p-4">
+            <div className="space-y-4">
+              {messages.length === 0 && (<div className="text-center py-12"><motion.div animate={{ y: [-5, 5, -5] }} transition={{ duration: 3, repeat: Infinity }}><Bot className="w-16 h-16 mx-auto mb-4 text-royal-purple/30" /></motion.div><h3 className="font-semibold mb-2">Start a Conversation</h3><p className="text-sm text-muted-foreground max-w-md mx-auto">I can help you manage tasks, remember important things, and provide productivity suggestions.</p></div>)}
+              {messages.map((msg, index) => (<motion.div key={index} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={"flex " + (msg.role === 'user' ? 'justify-end' : 'justify-start')}><div className={"max-w-[80%] p-4 rounded-2xl " + (msg.role === 'user' ? 'gradient-bg text-white rounded-br-sm' : 'bg-gradient-to-r from-purple-50 to-pink-50 rounded-bl-sm border border-purple-100')}><p className="whitespace-pre-wrap">{msg.content}</p></div></motion.div>))}
+              {loading && (<div className="flex justify-start"><div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-2xl rounded-bl-sm border border-purple-100"><div className="flex gap-1">{[0, 1, 2].map(i => <motion.div key={i} animate={{ y: [0, -5, 0] }} transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.1 }} className="w-2 h-2 rounded-full bg-royal-purple" />)}</div></div></div>)}
+              <div ref={messagesEndRef} />
+            </div>
+          </ScrollArea>
+          <div className="p-4 border-t bg-gradient-to-r from-purple-50/50 to-pink-50/50">
+            <form onSubmit={(e) => { e.preventDefault(); sendMessage(); }} className="flex gap-3"><Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask me anything..." className="flex-1 border-purple-200" disabled={loading} /><Button type="submit" className="gradient-bg text-white" disabled={loading}><Send className="w-4 h-4" /></Button></form>
+          </div>
+        </Card>
+      </div>
+      <div>
+        <Card className="border-0 shadow-card h-full flex flex-col">
+          <CardHeader className="border-b border-purple-100"><div className="flex items-center justify-between"><CardTitle className="text-lg">Memory Bank</CardTitle><Button variant="ghost" size="sm" onClick={clearMemory} className="text-destructive hover:bg-red-50"><Trash2 className="w-4 h-4 mr-1" />Clear</Button></div></CardHeader>
+          <ScrollArea className="flex-1"><div className="p-4 space-y-3">{memories.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">No memories stored yet</p> : memories.slice(0, 10).map(memory => (<motion.div key={memory.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="p-3 rounded-lg bg-gradient-to-r from-purple-50 to-pink-50 text-sm"><p className="line-clamp-3">{memory.content}</p><p className="text-xs text-muted-foreground mt-2">{new Date(memory.created_at).toLocaleDateString()}</p></motion.div>))}</div></ScrollArea>
+        </Card>
+      </div>
+    </motion.div>
+  );
+};
+
+// Tasks Page
+const TasksPage = () => {
+  const { token } = useAuth();
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [newTask, setNewTask] = useState({ title: '', description: '', priority: 'medium', deadline: '' });
+
+  useEffect(() => { api.get('/tasks', token).then(setTasks).catch(console.error).finally(() => setLoading(false)); }, [token]);
+
+  const addTask = async () => { if (!newTask.title) return; try { const response = await api.post('/tasks', newTask, token); setTasks([...tasks, response.task]); setNewTask({ title: '', description: '', priority: 'medium', deadline: '' }); setShowAddTask(false); } catch {} };
+  const toggleTask = async (taskId, completed) => { try { await api.put("/tasks/" + taskId, { completed: !completed }, token); setTasks(tasks.map(t => t.id === taskId ? { ...t, completed: !completed } : t)); } catch {} };
+  const deleteTask = async (taskId) => { try { await api.delete("/tasks/" + taskId, token); setTasks(tasks.filter(t => t.id !== taskId)); } catch {} };
+
+  const priorityColors = { low: 'bg-green-100 text-green-700 border-green-200', medium: 'bg-amber-100 text-amber-700 border-amber-200', high: 'bg-red-100 text-red-700 border-red-200' };
+
+  return (
+    <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6">
+      <div className="flex items-center justify-between"><div><h2 className="text-2xl font-display font-bold">Tasks & Reminders</h2><p className="text-muted-foreground">Stay organized and productive</p></div><motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}><Button onClick={() => setShowAddTask(true)} className="gradient-bg text-white"><Plus className="w-4 h-4 mr-2" />Add Task</Button></motion.div></div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[{ label: 'Total Tasks', value: tasks.length, icon: Calendar, color: 'from-royal-purple to-hot-pink' }, { label: 'Completed', value: tasks.filter(t => t.completed).length, icon: Check, color: 'from-green-400 to-emerald-500' }, { label: 'Pending', value: tasks.filter(t => !t.completed).length, icon: Clock, color: 'from-hot-pink to-rose-pink' }].map((stat, i) => (<motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}><Card className="border-0 shadow-card card-hover"><CardContent className="p-4 flex items-center gap-4"><div className={"w-10 h-10 rounded-lg bg-gradient-to-br " + stat.color + " flex items-center justify-center"}><stat.icon className="w-5 h-5 text-white" /></div><div><p className="text-2xl font-bold">{stat.value}</p><p className="text-sm text-muted-foreground">{stat.label}</p></div></CardContent></Card></motion.div>))}
+      </div>
+      <Card className="border-0 shadow-card"><CardContent className="p-6">
+        {loading ? <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full" />)}</div> : tasks.length === 0 ? (<div className="text-center py-12"><Calendar className="w-16 h-16 mx-auto mb-4 text-muted-foreground" /><h3 className="font-semibold mb-2">No Tasks Yet</h3><p className="text-sm text-muted-foreground">Create your first task to get started</p></div>) : (
+          <div className="space-y-3">
+            {tasks.map((task, index) => (<motion.div key={task.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} className={"flex items-center gap-4 p-4 rounded-xl border " + (task.completed ? 'bg-gray-50 opacity-60' : 'bg-gradient-to-r from-white to-purple-50/50')}><button onClick={() => toggleTask(task.id, task.completed)} className={"w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors " + (task.completed ? 'bg-green-500 border-green-500' : 'border-purple-300 hover:border-royal-purple')}>{task.completed && <Check className="w-4 h-4 text-white" />}</button><div className="flex-1"><p className={"font-medium " + (task.completed ? 'line-through' : '')}>{task.title}</p>{task.description && <p className="text-sm text-muted-foreground">{task.description}</p>}{task.deadline && <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(task.deadline).toLocaleDateString()}</p>}</div><Badge className={priorityColors[task.priority] + " border"}>{task.priority}</Badge><Button variant="ghost" size="icon" onClick={() => deleteTask(task.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button></motion.div>))}
+          </div>
+        )}
+      </CardContent></Card>
+      <Dialog open={showAddTask} onOpenChange={setShowAddTask}>
+        <DialogContent className="border-0 shadow-2xl"><DialogHeader><DialogTitle>Add New Task</DialogTitle><DialogDescription>Create a new task to stay organized</DialogDescription></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>Task Title</Label><Input value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} placeholder="What needs to be done?" className="border-purple-200" /></div>
+            <div><Label>Description (optional)</Label><Textarea value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} placeholder="Add more details..." rows={2} className="border-purple-200" /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Priority</Label><Select value={newTask.priority} onValueChange={(value) => setNewTask({ ...newTask, priority: value })}><SelectTrigger className="border-purple-200"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="low">Low</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="high">High</SelectItem></SelectContent></Select></div>
+              <div><Label>Deadline</Label><Input type="date" value={newTask.deadline} onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })} className="border-purple-200" /></div>
+            </div>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setShowAddTask(false)}>Cancel</Button><Button onClick={addTask} className="gradient-bg text-white">Add Task</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </motion.div>
+  );
+};
+
+// Writing Studio
+const WritingStudioPage = () => {
+  const { token } = useAuth();
+  const [articles, setArticles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentArticle, setCurrentArticle] = useState({ title: '', content: '', excerpt: '', cover_image: '' });
+  const [editing, setEditing] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { api.get('/articles', token).then(setArticles).catch(console.error).finally(() => setLoading(false)); }, [token]);
+
+  const saveArticle = async (publish = false) => { if (!currentArticle.title || !currentArticle.content) return; setSaving(true); try { if (editing) { await api.put("/articles/" + editing, { ...currentArticle, published: publish }, token); setArticles(articles.map(a => a.id === editing ? { ...a, ...currentArticle, published: publish } : a)); } else { const response = await api.post('/articles', { ...currentArticle, published: publish }, token); setArticles([response.article, ...articles]); } setCurrentArticle({ title: '', content: '', excerpt: '', cover_image: '' }); setEditing(null); } catch {} finally { setSaving(false); } };
+  const deleteArticle = async (articleId) => { try { await api.delete("/articles/" + articleId, token); setArticles(articles.filter(a => a.id !== articleId)); } catch {} };
+
+  return (
+    <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6">
+      <div><h2 className="text-2xl font-display font-bold">Writing Studio</h2><p className="text-muted-foreground">Create and publish your articles</p></div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <Card className="border-0 shadow-card"><CardHeader><CardTitle>{editing ? 'Edit Article' : 'New Article'}</CardTitle></CardHeader><CardContent className="space-y-4">
+            <Input value={currentArticle.title} onChange={(e) => setCurrentArticle({ ...currentArticle, title: e.target.value })} placeholder="Article Title" className="text-xl font-semibold border-purple-200" />
+            <Input value={currentArticle.cover_image} onChange={(e) => setCurrentArticle({ ...currentArticle, cover_image: e.target.value })} placeholder="Cover Image URL (optional)" className="border-purple-200" />
+            <Input value={currentArticle.excerpt} onChange={(e) => setCurrentArticle({ ...currentArticle, excerpt: e.target.value })} placeholder="Short excerpt (optional)" className="border-purple-200" />
+            <div className="border rounded-lg overflow-hidden border-purple-200">
+              <div className="flex items-center gap-1 p-2 bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-200">
+                <Button variant="ghost" size="sm" onClick={() => document.execCommand('bold')}><Bold className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => document.execCommand('italic')}><Italic className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => document.execCommand('underline')}><Underline className="w-4 h-4" /></Button>
+                <Separator orientation="vertical" className="h-6 mx-1" />
+                <Button variant="ghost" size="sm" onClick={() => document.execCommand('formatBlock', false, 'h1')}><Type className="w-4 h-4" /></Button>
+                <Separator orientation="vertical" className="h-6 mx-1" />
+                <Button variant="ghost" size="sm" onClick={() => document.execCommand('justifyLeft')}><AlignLeft className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => document.execCommand('justifyCenter')}><AlignCenter className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => document.execCommand('justifyRight')}><AlignRight className="w-4 h-4" /></Button>
+              </div>
+              <div contentEditable className="min-h-[300px] p-4 focus:outline-none prose max-w-none" onInput={(e) => setCurrentArticle({ ...currentArticle, content: e.currentTarget.innerHTML })} dangerouslySetInnerHTML={{ __html: currentArticle.content }} />
+            </div>
+            <div className="flex gap-3 justify-end">
+              {editing && <Button variant="outline" onClick={() => { setCurrentArticle({ title: '', content: '', excerpt: '', cover_image: '' }); setEditing(null); }}>Cancel</Button>}
+              <Button variant="outline" onClick={() => saveArticle(false)} disabled={saving} className="border-purple-200">Save Draft</Button>
+              <Button onClick={() => saveArticle(true)} className="gradient-bg text-white" disabled={saving}>{saving && <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity }} className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full mr-2" />}Publish</Button>
+            </div>
+          </CardContent></Card>
+        </div>
+        <div>
+          <Card className="border-0 shadow-card"><CardHeader><CardTitle>Your Articles</CardTitle></CardHeader><CardContent>
+            <ScrollArea className="h-[500px]">
+              {loading ? <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-20" />)}</div> : articles.length === 0 ? <div className="text-center py-8"><FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground" /><p className="text-sm text-muted-foreground">No articles yet</p></div> : (
+                <div className="space-y-3">{articles.map(article => (<div key={article.id} className="p-3 rounded-lg border border-purple-100 bg-gradient-to-r from-white to-purple-50/50 hover:shadow-md transition-shadow"><div className="flex items-start justify-between mb-2"><h4 className="font-medium line-clamp-1">{article.title}</h4><Badge variant={article.published ? 'default' : 'secondary'} className={article.published ? 'gradient-bg text-white' : ''}>{article.published ? 'Published' : 'Draft'}</Badge></div><div className="flex items-center gap-2"><Button variant="ghost" size="sm" onClick={() => { setCurrentArticle({ title: article.title, content: article.content, excerpt: article.excerpt || '', cover_image: article.cover_image || '' }); setEditing(article.id); }}><Edit className="w-3 h-3 mr-1" />Edit</Button><Button variant="ghost" size="sm" onClick={() => deleteArticle(article.id)}><Trash2 className="w-3 h-3 mr-1 text-destructive" /></Button></div></div>))}</div>
+              )}
+            </ScrollArea>
+          </CardContent></Card>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+// Gallery Manager
+const GalleryManagerPage = () => {
+  const { token } = useAuth();
+  const [photos, setPhotos] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { api.get('/gallery', token).then(setPhotos).catch(console.error).finally(() => setLoading(false)); }, [token]);
+
+  const toggleVisibility = async (photoId, visible) => { try { await api.put("/gallery/" + photoId, { visible: !visible }, token); setPhotos(photos.map(p => p.id === photoId ? { ...p, visible: !visible } : p)); } catch {} };
+  const updateCaption = async (photoId, caption) => { try { await api.put("/gallery/" + photoId, { caption }, token); setPhotos(photos.map(p => p.id === photoId ? { ...p, caption } : p)); } catch {} };
+
+  return (
+    <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6">
+      <div className="flex items-center justify-between"><div><h2 className="text-2xl font-display font-bold">Photo Gallery</h2><p className="text-muted-foreground">Manage your photo collection</p></div><Link to="/gallery" target="_blank"><Button variant="outline" className="border-purple-200"><Eye className="w-4 h-4 mr-2" />View Public Gallery</Button></Link></div>
+      <Card className="border-0 shadow-card"><CardContent className="p-6">
+        {loading ? <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="aspect-square rounded-xl" />)}</div> : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {photos.map((photo, index) => (
+              <motion.div key={photo.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.05 }} className={"relative group rounded-xl overflow-hidden shadow-card " + (!photo.visible ? 'opacity-50' : '')}>
+                <img src={photo.url} alt={photo.caption} className="w-full aspect-square object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute bottom-0 left-0 right-0 p-3">
+                    <Input value={photo.caption || ''} onChange={(e) => updateCaption(photo.id, e.target.value)} placeholder="Add caption..." className="text-sm bg-white/10 border-white/20 text-white placeholder:text-white/50" />
+                    <div className="flex items-center justify-between mt-2">
+                      <Button variant="ghost" size="sm" onClick={() => toggleVisibility(photo.id, photo.visible)} className="text-white hover:bg-white/20">{photo.visible ? <><Eye className="w-4 h-4 mr-1" /> Visible</> : <><EyeOff className="w-4 h-4 mr-1" /> Hidden</>}</Button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </CardContent></Card>
+    </motion.div>
+  );
+};
+
+// Settings Page
+const SettingsPage = () => {
+  const { theme, setTheme } = useTheme();
+  return (
+    <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6 max-w-2xl">
+      <div><h2 className="text-2xl font-display font-bold">Settings</h2><p className="text-muted-foreground">Customize your experience</p></div>
+      <Card className="border-0 shadow-card"><CardHeader><CardTitle>Appearance</CardTitle><CardDescription>Customize how the dashboard looks</CardDescription></CardHeader><CardContent className="space-y-6">
+        <div className="flex items-center justify-between"><div><Label>Theme</Label><p className="text-sm text-muted-foreground">Choose light or dark mode</p></div>
+          <div className="flex items-center gap-2">
+            <Button variant={theme === 'light' ? 'default' : 'outline'} size="sm" onClick={() => setTheme('light')} className={theme === 'light' ? 'gradient-bg text-white' : 'border-purple-200'}><Sun className="w-4 h-4 mr-1" />Light</Button>
+            <Button variant={theme === 'dark' ? 'default' : 'outline'} size="sm" onClick={() => setTheme('dark')} className={theme === 'dark' ? 'gradient-bg text-white' : 'border-purple-200'}><Moon className="w-4 h-4 mr-1" />Dark</Button>
+          </div>
+        </div>
+      </CardContent></Card>
+      <Card className="border-0 shadow-card"><CardHeader><CardTitle>Account</CardTitle><CardDescription>Manage your admin account</CardDescription></CardHeader><CardContent>
+        <div className="flex items-center gap-4"><Avatar className="w-16 h-16 border-2 border-royal-purple/20"><AvatarImage src={PROFILE_PHOTO} /><AvatarFallback className="gradient-bg text-white text-xl">MA</AvatarFallback></Avatar><div><p className="font-semibold">MiryamAbida07</p><p className="text-sm text-muted-foreground">Administrator</p></div></div>
+      </CardContent></Card>
+    </motion.div>
+  );
+};
+
+// Main App
+function App() {
+  return (
+    <ThemeProvider><AuthProvider><TooltipProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<><PublicNavbar /><HomePage /><FloatingAIAgent /></>} />
+          <Route path="/articles" element={<><PublicNavbar /><ArticlesPage /><FloatingAIAgent /></>} />
+          <Route path="/articles/:id" element={<><PublicNavbar /><ArticlePage /><FloatingAIAgent /></>} />
+          <Route path="/gallery" element={<><PublicNavbar /><GalleryPage /><FloatingAIAgent /></>} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin/dashboard" element={<ProtectedRoute><AdminLayout><AdminDashboard /></AdminLayout></ProtectedRoute>} />
+          <Route path="/admin/portfolio" element={<ProtectedRoute><AdminLayout><PortfolioEditor /></AdminLayout></ProtectedRoute>} />
+          <Route path="/admin/ai-agent" element={<ProtectedRoute><AdminLayout><AIAgentPage /></AdminLayout></ProtectedRoute>} />
+          <Route path="/admin/tasks" element={<ProtectedRoute><AdminLayout><TasksPage /></AdminLayout></ProtectedRoute>} />
+          <Route path="/admin/writing" element={<ProtectedRoute><AdminLayout><WritingStudioPage /></AdminLayout></ProtectedRoute>} />
+          <Route path="/admin/gallery" element={<ProtectedRoute><AdminLayout><GalleryManagerPage /></AdminLayout></ProtectedRoute>} />
+          <Route path="/admin/settings" element={<ProtectedRoute><AdminLayout><SettingsPage /></AdminLayout></ProtectedRoute>} />
+          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </TooltipProvider></AuthProvider></ThemeProvider>
+  );
+}
+
+export default App;
