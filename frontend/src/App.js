@@ -1139,34 +1139,178 @@ const GalleryManagerPage = () => {
   const { token } = useAuth();
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => { api.get('/gallery', token).then(setPhotos).catch(console.error).finally(() => setLoading(false)); }, [token]);
 
   const toggleVisibility = async (photoId, visible) => { try { await api.put("/gallery/" + photoId, { visible: !visible }, token); setPhotos(photos.map(p => p.id === photoId ? { ...p, visible: !visible } : p)); } catch {} };
   const updateCaption = async (photoId, caption) => { try { await api.put("/gallery/" + photoId, { caption }, token); setPhotos(photos.map(p => p.id === photoId ? { ...p, caption } : p)); } catch {} };
+  
+  const deletePhoto = async (photoId) => {
+    if (!window.confirm('Apakah Anda yakin ingin menghapus foto ini?')) return;
+    try {
+      await api.delete("/gallery/" + photoId, token);
+      setPhotos(photos.filter(p => p.id !== photoId));
+    } catch (error) {
+      console.error('Error deleting photo:', error);
+    }
+  };
+
+  const handleFileSelect = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    setUploading(true);
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (!file.type.startsWith('image/')) continue;
+      
+      try {
+        // Convert to base64
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        
+        // Upload to server
+        const response = await api.post('/gallery/upload', {
+          image_data: base64,
+          caption: file.name.replace(/\.[^/.]+$/, '') // Use filename without extension as caption
+        }, token);
+        
+        if (response.success) {
+          setPhotos(prev => [...prev, response.photo]);
+        }
+      } catch (error) {
+        console.error('Error uploading photo:', error);
+      }
+    }
+    
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   return (
     <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6">
-      <div className="flex items-center justify-between"><div><h2 className="text-2xl font-display font-bold">Photo Gallery</h2><p className="text-muted-foreground">Manage your photo collection</p></div><Link to="/gallery" target="_blank"><Button variant="outline" className="border-purple-200"><Eye className="w-4 h-4 mr-2" />View Public Gallery</Button></Link></div>
-      <Card className="border-0 shadow-card"><CardContent className="p-6">
-        {loading ? <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="aspect-square rounded-xl" />)}</div> : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {photos.map((photo, index) => (
-              <motion.div key={photo.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.05 }} className={"relative group rounded-xl overflow-hidden shadow-card " + (!photo.visible ? 'opacity-50' : '')}>
-                <img src={photo.url} alt={photo.caption} className="w-full aspect-square object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="absolute bottom-0 left-0 right-0 p-3">
-                    <Input value={photo.caption || ''} onChange={(e) => updateCaption(photo.id, e.target.value)} placeholder="Add caption..." className="text-sm bg-white/10 border-white/20 text-white placeholder:text-white/50" />
-                    <div className="flex items-center justify-between mt-2">
-                      <Button variant="ghost" size="sm" onClick={() => toggleVisibility(photo.id, photo.visible)} className="text-white hover:bg-white/20">{photo.visible ? <><Eye className="w-4 h-4 mr-1" /> Visible</> : <><EyeOff className="w-4 h-4 mr-1" /> Hidden</>}</Button>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h2 className="text-2xl font-display font-bold">Photo Gallery</h2>
+          <p className="text-muted-foreground">Kelola koleksi foto Anda - upload dan hapus foto</p>
+        </div>
+        <div className="flex gap-3">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            accept="image/*"
+            multiple
+            className="hidden"
+          />
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button 
+              onClick={() => fileInputRef.current?.click()} 
+              className="gradient-bg text-white"
+              disabled={uploading}
+            >
+              {uploading ? (
+                <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity }} className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full mr-2" />
+              ) : (
+                <Plus className="w-4 h-4 mr-2" />
+              )}
+              {uploading ? 'Uploading...' : 'Upload Foto'}
+            </Button>
+          </motion.div>
+          <Link to="/gallery" target="_blank">
+            <Button variant="outline" className="border-purple-200">
+              <Eye className="w-4 h-4 mr-2" />View Public Gallery
+            </Button>
+          </Link>
+        </div>
+      </div>
+      
+      <Card className="border-0 shadow-card">
+        <CardContent className="p-6">
+          {loading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map(i => <Skeleton key={i} className="aspect-square rounded-xl" />)}
+            </div>
+          ) : photos.length === 0 ? (
+            <div className="text-center py-12">
+              <Image className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="font-semibold mb-2">Belum ada foto</h3>
+              <p className="text-sm text-muted-foreground mb-4">Upload foto pertama Anda untuk memulai</p>
+              <Button onClick={() => fileInputRef.current?.click()} className="gradient-bg text-white">
+                <Plus className="w-4 h-4 mr-2" />Upload Foto
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {photos.map((photo, index) => (
+                <motion.div 
+                  key={photo.id} 
+                  initial={{ opacity: 0, scale: 0.9 }} 
+                  animate={{ opacity: 1, scale: 1 }} 
+                  transition={{ delay: index * 0.05 }} 
+                  className={"relative group rounded-xl overflow-hidden shadow-card " + (!photo.visible ? 'opacity-50' : '')}
+                >
+                  <img src={photo.url} alt={photo.caption} className="w-full aspect-square object-cover" />
+                  
+                  {/* Delete button - always visible on top right */}
+                  <motion.button
+                    onClick={() => deletePhoto(photo.id)}
+                    className="absolute top-2 right-2 w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-red-600"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </motion.button>
+                  
+                  {/* Bottom overlay with caption and visibility */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute bottom-0 left-0 right-0 p-3">
+                      <Input 
+                        value={photo.caption || ''} 
+                        onChange={(e) => updateCaption(photo.id, e.target.value)} 
+                        placeholder="Add caption..." 
+                        className="text-sm bg-white/10 border-white/20 text-white placeholder:text-white/50 mb-2" 
+                      />
+                      <div className="flex items-center justify-between">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => toggleVisibility(photo.id, photo.visible)} 
+                          className="text-white hover:bg-white/20"
+                        >
+                          {photo.visible ? <><Eye className="w-4 h-4 mr-1" /> Visible</> : <><EyeOff className="w-4 h-4 mr-1" /> Hidden</>}
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* Upload hint */}
+      <Card className="border-0 shadow-card bg-gradient-to-r from-purple-50 to-pink-50">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg gradient-bg flex items-center justify-center">
+              <Image className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="font-medium">Tips Upload Foto</p>
+              <p className="text-sm text-muted-foreground">Anda bisa upload banyak foto sekaligus. Klik tombol "Upload Foto" dan pilih beberapa file.</p>
+            </div>
           </div>
-        )}
-      </CardContent></Card>
+        </CardContent>
+      </Card>
     </motion.div>
   );
 };
