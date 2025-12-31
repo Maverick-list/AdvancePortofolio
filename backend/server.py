@@ -367,17 +367,15 @@ Guidelines:
 - If there are tasks due today or soon, mention them
 - You can help with creating new tasks, notes, and reminders"""
 
-        response = openai_client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": message.message}
-            ],
-            temperature=0.7,
-            max_tokens=500
-        )
+        # Use Emergent LLM Integration
+        session_id = str(uuid.uuid4())
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=session_id,
+            system_message=system_prompt
+        ).with_model("openai", "gpt-4.1-mini")
         
-        ai_response = response.choices[0].message.content
+        ai_response = await chat.send_message(UserMessage(text=message.message))
         
         # Save this conversation to memory
         await db.ai_memory.insert_one({
