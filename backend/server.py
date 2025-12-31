@@ -11,7 +11,7 @@ from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone, timedelta
 import secrets
-from openai import OpenAI
+from emergentintegrations.llm.openai import LlmChat, UserMessage
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -21,11 +21,8 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ.get('DB_NAME', 'miryam_portfolio')]
 
-# OpenAI client for AI Agent
-openai_client = OpenAI(
-    api_key=os.environ.get('EMERGENT_LLM_KEY'),
-    base_url=os.environ.get('OPENAI_BASE_URL', 'https://api.emergentagi.com/v1')
-)
+# Emergent LLM Key for AI Agent
+EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
 
 # Create the main app
 app = FastAPI(title="Miryam Portfolio API")
