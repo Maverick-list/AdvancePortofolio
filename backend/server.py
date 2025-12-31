@@ -495,6 +495,27 @@ async def get_gallery(visible_only: bool = False):
     photos = await db.gallery.find(query, {"_id": 0}).sort("order", 1).to_list(100)
     return photos
 
+class PhotoUpload(BaseModel):
+    image_data: str  # Base64 encoded image
+    caption: Optional[str] = ""
+
+@api_router.post("/gallery/upload")
+async def upload_photo(photo: PhotoUpload, _: bool = Depends(get_current_admin)):
+    # Get current max order
+    max_order_photo = await db.gallery.find_one({}, sort=[("order", -1)])
+    new_order = (max_order_photo.get("order", 0) + 1) if max_order_photo else 0
+    
+    new_photo = {
+        "id": str(uuid.uuid4()),
+        "url": photo.image_data,  # Store base64 data as URL
+        "caption": photo.caption,
+        "visible": True,
+        "order": new_order,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.gallery.insert_one(new_photo)
+    return {"success": True, "photo": new_photo}
+
 @api_router.put("/gallery/{photo_id}")
 async def update_photo(photo_id: str, photo_data: dict, _: bool = Depends(get_current_admin)):
     await db.gallery.update_one({"id": photo_id}, {"$set": photo_data})
