@@ -782,3 +782,189 @@ const AdminLayout = ({ children }) => {
     </div>
   );
 };
+
+// Admin Dashboard
+const AdminDashboard = () => {
+  const { token } = useAuth();
+  const [stats, setStats] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([api.get('/stats', token), api.get('/ai/suggestions', token)])
+      .then(([statsData, suggestionsData]) => { setStats(statsData); setSuggestions(suggestionsData.suggestions || []); })
+      .catch(console.error).finally(() => setLoading(false));
+  }, [token]);
+
+  const statCards = [
+    { label: 'Total Tasks', value: stats?.tasks?.total || 0, icon: Calendar, color: 'from-royal-purple to-hot-pink' },
+    { label: 'Published Articles', value: stats?.articles?.published || 0, icon: FileText, color: 'from-hot-pink to-rose-pink' },
+    { label: 'Gallery Photos', value: stats?.gallery?.total || 0, icon: Image, color: 'from-soft-lavender to-royal-purple' },
+    { label: 'AI Memories', value: stats?.ai_memories?.total || 0, icon: Bot, color: 'from-deep-purple to-royal-purple' },
+  ];
+
+  return (
+    <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <Card className="overflow-hidden border-0 shadow-xl">
+          <div className="relative p-8 animated-gradient">
+            <div className="relative z-10">
+              <motion.h2 className="text-3xl font-display font-bold text-white mb-2" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>Welcome back, Miryam! ✨</motion.h2>
+              <motion.p className="text-white/80" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>Here's what's happening with your portfolio today.</motion.p>
+            </div>
+            <motion.div animate={{ y: [-10, 10, -10], rotate: [0, 5, 0] }} transition={{ duration: 6, repeat: Infinity }} className="absolute right-8 top-1/2 -translate-y-1/2"><Sparkles className="w-24 h-24 text-white/20" /></motion.div>
+          </div>
+        </Card>
+      </motion.div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {statCards.map((stat, index) => (
+          <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + index * 0.1 }} whileHover={{ y: -5 }}>
+            <Card className="border-0 shadow-card overflow-hidden card-hover">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div><p className="text-sm text-muted-foreground mb-1">{stat.label}</p>{loading ? <Skeleton className="w-12 h-8" /> : <motion.p initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", delay: 0.3 + index * 0.1 }} className="text-3xl font-bold">{stat.value}</motion.p>}</div>
+                  <motion.div className={"w-12 h-12 rounded-xl bg-gradient-to-br " + stat.color + " flex items-center justify-center"} whileHover={{ scale: 1.1, rotate: 5 }}><stat.icon className="w-6 h-6 text-white" /></motion.div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+      {suggestions.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+          <Card className="border-0 shadow-card">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <motion.div className="w-10 h-10 rounded-lg gradient-bg flex items-center justify-center" animate={{ boxShadow: ["0 0 10px rgba(106, 0, 255, 0.3)", "0 0 20px rgba(255, 94, 207, 0.4)", "0 0 10px rgba(106, 0, 255, 0.3)"] }} transition={{ duration: 2, repeat: Infinity }}><Bot className="w-5 h-5 text-white" /></motion.div>
+                <CardTitle>AI Suggestions</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">{suggestions.map((suggestion, index) => (<motion.div key={index} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 + index * 0.1 }} className={"p-4 rounded-lg " + (suggestion.type === 'urgent' ? 'bg-gradient-to-r from-red-50 to-pink-50 border border-red-200' : suggestion.type === 'reminder' ? 'bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200' : 'bg-gradient-to-r from-purple-50 to-pink-50')}><p className="text-sm">{suggestion.message}</p></motion.div>))}</div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[{ to: '/admin/writing', icon: FileText, title: 'Write New Article', desc: 'Share your thoughts', gradient: 'from-royal-purple to-hot-pink' }, { to: '/admin/tasks', icon: Plus, title: 'Add New Task', desc: 'Stay organized', gradient: 'from-hot-pink to-rose-pink' }, { to: '/admin/ai-agent', icon: Bot, title: 'Chat with AI', desc: 'Your personal assistant', gradient: 'from-deep-purple to-royal-purple' }].map((action, index) => (
+          <motion.div key={action.to} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 + index * 0.1 }} whileHover={{ y: -5 }}>
+            <Link to={action.to}><Card className="border-0 shadow-card cursor-pointer h-full card-hover"><CardContent className="p-6 flex items-center gap-4"><motion.div className={"w-12 h-12 rounded-xl bg-gradient-to-br " + action.gradient + " flex items-center justify-center"} whileHover={{ scale: 1.1, rotate: 5 }}><action.icon className="w-6 h-6 text-white" /></motion.div><div><h3 className="font-semibold">{action.title}</h3><p className="text-sm text-muted-foreground">{action.desc}</p></div></CardContent></Card></Link>
+          </motion.div>
+        ))}
+      </div>
+    </motion.div>
+  );
+};
+
+// Portfolio Editor
+const PortfolioEditor = () => {
+  const { token } = useAuth();
+  const [portfolio, setPortfolio] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('basic');
+
+  useEffect(() => { api.get('/portfolio').then(setPortfolio).catch(console.error).finally(() => setLoading(false)); }, []);
+
+  const handleSave = async () => { setSaving(true); try { await api.put('/portfolio', portfolio, token); } catch {} finally { setSaving(false); } };
+  const updateField = (field, value) => { setPortfolio({ ...portfolio, [field]: value }); };
+
+  if (loading) return <div className="flex items-center justify-center h-64"><motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity }} className="w-12 h-12 rounded-full border-4 border-royal-purple border-t-hot-pink" /></div>;
+
+  return (
+    <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div><h2 className="text-2xl font-display font-bold">Portfolio Editor</h2><p className="text-muted-foreground">Customize your public portfolio</p></div>
+        <div className="flex gap-3">
+          <Link to="/" target="_blank"><Button variant="outline" className="border-purple-200"><Eye className="w-4 h-4 mr-2" />Preview</Button></Link>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}><Button onClick={handleSave} disabled={saving} className="gradient-bg text-white">{saving ? <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity }} className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full mr-2" /> : <Check className="w-4 h-4 mr-2" />}Save Changes</Button></motion.div>
+        </div>
+      </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid grid-cols-5 w-full max-w-xl bg-purple-100/50">
+          <TabsTrigger value="basic">Basic Info</TabsTrigger><TabsTrigger value="skills">Skills</TabsTrigger><TabsTrigger value="experience">Experience</TabsTrigger><TabsTrigger value="projects">Projects</TabsTrigger><TabsTrigger value="contact">Contact</TabsTrigger>
+        </TabsList>
+        <TabsContent value="basic" className="mt-6">
+          <Card className="border-0 shadow-card"><CardContent className="p-6 space-y-6">
+            <div className="flex items-center gap-6">
+              <motion.div whileHover={{ scale: 1.05 }}><Avatar className="w-24 h-24 border-4 border-royal-purple/20"><AvatarImage src={portfolio?.avatar_url || PROFILE_PHOTO} /><AvatarFallback className="gradient-bg text-white text-2xl">{portfolio?.name?.charAt(0)}</AvatarFallback></Avatar></motion.div>
+              <div className="flex-1"><Label htmlFor="avatar_url">Profile Photo URL</Label><Input id="avatar_url" value={portfolio?.avatar_url || ''} onChange={(e) => updateField('avatar_url', e.target.value)} placeholder="https://example.com/photo.jpg" className="border-purple-200" /></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><Label htmlFor="name">Full Name</Label><Input id="name" value={portfolio?.name || ''} onChange={(e) => updateField('name', e.target.value)} className="border-purple-200" /></div>
+              <div><Label htmlFor="title">Title / Tagline</Label><Input id="title" value={portfolio?.title || ''} onChange={(e) => updateField('title', e.target.value)} className="border-purple-200" /></div>
+            </div>
+            <div><Label htmlFor="bio">Bio</Label><Textarea id="bio" value={portfolio?.bio || ''} onChange={(e) => updateField('bio', e.target.value)} rows={4} className="border-purple-200" /></div>
+            <Separator />
+            <div><h3 className="font-semibold mb-4">Section Visibility</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {['hero', 'about', 'skills', 'experience', 'projects', 'contact'].map(section => (
+                  <div key={section} className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-purple-50 to-pink-50"><span className="capitalize">{section}</span><Switch checked={portfolio?.sections_visible?.[section] !== false} onCheckedChange={(checked) => updateField('sections_visible', { ...portfolio?.sections_visible, [section]: checked })} /></div>
+                ))}
+              </div>
+            </div>
+          </CardContent></Card>
+        </TabsContent>
+        <TabsContent value="skills" className="mt-6">
+          <Card className="border-0 shadow-card"><CardContent className="p-6">
+            <div className="space-y-4">
+              {portfolio?.skills?.map((skill, index) => (
+                <motion.div key={index} className="flex items-center gap-4 p-4 rounded-lg bg-gradient-to-r from-purple-50 to-pink-50" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }}>
+                  <GripVertical className="w-5 h-5 text-muted-foreground cursor-move" />
+                  <Input value={skill.name} onChange={(e) => { const newSkills = [...portfolio.skills]; newSkills[index].name = e.target.value; updateField('skills', newSkills); }} className="flex-1 border-purple-200" placeholder="Skill name" />
+                  <Input type="number" value={skill.level} onChange={(e) => { const newSkills = [...portfolio.skills]; newSkills[index].level = parseInt(e.target.value) || 0; updateField('skills', newSkills); }} className="w-20 border-purple-200" min="0" max="100" />
+                  <Input value={skill.category} onChange={(e) => { const newSkills = [...portfolio.skills]; newSkills[index].category = e.target.value; updateField('skills', newSkills); }} className="w-32 border-purple-200" placeholder="Category" />
+                  <Button variant="ghost" size="icon" onClick={() => { const newSkills = portfolio.skills.filter((_, i) => i !== index); updateField('skills', newSkills); }}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                </motion.div>
+              ))}
+              <Button variant="outline" onClick={() => updateField('skills', [...(portfolio?.skills || []), { name: '', level: 50, category: '' }])} className="w-full border-dashed border-purple-300"><Plus className="w-4 h-4 mr-2" />Add Skill</Button>
+            </div>
+          </CardContent></Card>
+        </TabsContent>
+        <TabsContent value="experience" className="mt-6">
+          <Card className="border-0 shadow-card"><CardContent className="p-6">
+            <div className="space-y-4">
+              {portfolio?.experience?.map((exp, index) => (
+                <motion.div key={exp.id || index} className="p-4 rounded-lg bg-gradient-to-r from-purple-50 to-pink-50 space-y-3" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
+                  <div className="flex items-center justify-between"><span className="font-medium text-royal-purple">Experience {index + 1}</span><Button variant="ghost" size="icon" onClick={() => { const newExp = portfolio.experience.filter((_, i) => i !== index); updateField('experience', newExp); }}><Trash2 className="w-4 h-4 text-destructive" /></Button></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input value={exp.title} onChange={(e) => { const newExp = [...portfolio.experience]; newExp[index].title = e.target.value; updateField('experience', newExp); }} placeholder="Job Title" className="border-purple-200" />
+                    <Input value={exp.company} onChange={(e) => { const newExp = [...portfolio.experience]; newExp[index].company = e.target.value; updateField('experience', newExp); }} placeholder="Company" className="border-purple-200" />
+                  </div>
+                  <Input value={exp.period} onChange={(e) => { const newExp = [...portfolio.experience]; newExp[index].period = e.target.value; updateField('experience', newExp); }} placeholder="Period (e.g., 2020 - Present)" className="border-purple-200" />
+                  <Textarea value={exp.description} onChange={(e) => { const newExp = [...portfolio.experience]; newExp[index].description = e.target.value; updateField('experience', newExp); }} placeholder="Description" rows={2} className="border-purple-200" />
+                </motion.div>
+              ))}
+              <Button variant="outline" onClick={() => updateField('experience', [...(portfolio?.experience || []), { id: Date.now().toString(), title: '', company: '', period: '', description: '' }])} className="w-full border-dashed border-purple-300"><Plus className="w-4 h-4 mr-2" />Add Experience</Button>
+            </div>
+          </CardContent></Card>
+        </TabsContent>
+        <TabsContent value="projects" className="mt-6">
+          <Card className="border-0 shadow-card"><CardContent className="p-6">
+            <div className="space-y-4">
+              {portfolio?.projects?.map((project, index) => (
+                <motion.div key={project.id || index} className="p-4 rounded-lg bg-gradient-to-r from-purple-50 to-pink-50 space-y-3" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
+                  <div className="flex items-center justify-between"><span className="font-medium text-royal-purple">Project {index + 1}</span><Button variant="ghost" size="icon" onClick={() => { const newProjects = portfolio.projects.filter((_, i) => i !== index); updateField('projects', newProjects); }}><Trash2 className="w-4 h-4 text-destructive" /></Button></div>
+                  <Input value={project.title} onChange={(e) => { const newProjects = [...portfolio.projects]; newProjects[index].title = e.target.value; updateField('projects', newProjects); }} placeholder="Project Title" className="border-purple-200" />
+                  <Textarea value={project.description} onChange={(e) => { const newProjects = [...portfolio.projects]; newProjects[index].description = e.target.value; updateField('projects', newProjects); }} placeholder="Description" rows={2} className="border-purple-200" />
+                  <Input value={project.image} onChange={(e) => { const newProjects = [...portfolio.projects]; newProjects[index].image = e.target.value; updateField('projects', newProjects); }} placeholder="Image URL" className="border-purple-200" />
+                  <Input value={project.tags?.join(', ')} onChange={(e) => { const newProjects = [...portfolio.projects]; newProjects[index].tags = e.target.value.split(',').map(t => t.trim()); updateField('projects', newProjects); }} placeholder="Tags (comma separated)" className="border-purple-200" />
+                </motion.div>
+              ))}
+              <Button variant="outline" onClick={() => updateField('projects', [...(portfolio?.projects || []), { id: Date.now().toString(), title: '', description: '', image: '', tags: [], link: '' }])} className="w-full border-dashed border-purple-300"><Plus className="w-4 h-4 mr-2" />Add Project</Button>
+            </div>
+          </CardContent></Card>
+        </TabsContent>
+        <TabsContent value="contact" className="mt-6">
+          <Card className="border-0 shadow-card"><CardContent className="p-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[{ key: 'email', label: 'Email', placeholder: 'your@email.com' }, { key: 'phone', label: 'Phone', placeholder: '+1 234 567 890' }, { key: 'location', label: 'Location', placeholder: 'City, Country' }, { key: 'linkedin', label: 'LinkedIn', placeholder: 'https://linkedin.com/in/username' }, { key: 'github', label: 'GitHub', placeholder: 'https://github.com/username' }, { key: 'twitter', label: 'Twitter', placeholder: 'https://twitter.com/username' }].map(field => (
+                <div key={field.key}><Label>{field.label}</Label><Input value={portfolio?.contact?.[field.key] || ''} onChange={(e) => updateField('contact', { ...portfolio?.contact, [field.key]: e.target.value })} placeholder={field.placeholder} className="border-purple-200" /></div>
+              ))}
+            </div>
+          </CardContent></Card>
+        </TabsContent>
+      </Tabs>
+    </motion.div>
+  );
+};
