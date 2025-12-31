@@ -56,7 +56,7 @@ class Portfolio(BaseModel):
     name: str = "Miryam Abida"
     title: str = "Creative Developer & Designer"
     bio: str = "Passionate about creating beautiful digital experiences that inspire and delight."
-    avatar_url: str = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400"
+    avatar_url: str = "https://customer-assets.emergentagent.com/job_74a4d412-d036-4d55-a85a-57b8799f39c4/artifacts/5p9dxuwa_profile.png"
     hero_image: str = "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1920"
     skills: List[Dict[str, Any]] = []
     experience: List[Dict[str, Any]] = []
