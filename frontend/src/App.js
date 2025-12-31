@@ -501,3 +501,160 @@ const HomePage = () => {
     </motion.div>
   );
 };
+
+// Articles Page
+const ArticlesPage = () => {
+  const [articles, setArticles] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/articles?published_only=true').then(setArticles).catch(console.error).finally(() => setLoading(false));
+  }, []);
+
+  const handleLike = async (articleId) => {
+    try {
+      await api.post("/articles/" + articleId + "/like");
+      setArticles(articles.map(a => a.id === articleId ? { ...a, likes: (a.likes || 0) + 1 } : a));
+    } catch {}
+  };
+
+  return (
+    <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit" className="min-h-screen pt-24 pb-12 gradient-bg-page">
+      <div className="container mx-auto px-4">
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-16">
+          <Badge className="mb-4 gradient-bg text-white px-4 py-1">Blog</Badge>
+          <h1 className="text-4xl md:text-5xl font-display font-bold gradient-text mb-4">My Articles</h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">Thoughts, insights, and stories from my journey</p>
+        </motion.div>
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">{[1, 2, 3].map(i => (<Card key={i} className="overflow-hidden"><Skeleton className="h-48 w-full" /><CardContent className="pt-4"><Skeleton className="h-6 w-3/4 mb-2" /><Skeleton className="h-4 w-full mb-2" /><Skeleton className="h-4 w-2/3" /></CardContent></Card>))}</div>
+        ) : articles.length === 0 ? (
+          <Card className="max-w-md mx-auto text-center py-12 card-hover"><CardContent><FileText className="w-16 h-16 mx-auto mb-4 text-muted-foreground" /><h3 className="text-xl font-semibold mb-2">No Articles Yet</h3><p className="text-muted-foreground">Check back soon for new content!</p></CardContent></Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {articles.map((article, index) => (
+              <motion.div key={article.id} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }} whileHover={{ y: -5 }}>
+                <Card className="card-hover overflow-hidden h-full flex flex-col">
+                  {article.cover_image && (<div className="relative h-48 overflow-hidden"><img src={article.cover_image} alt={article.title} className="w-full h-full object-cover" /></div>)}
+                  <CardContent className="pt-4 flex-grow">
+                    <h3 className="text-xl font-bold mb-2">{article.title}</h3>
+                    <p className="text-muted-foreground text-sm line-clamp-3">{article.excerpt || article.content?.replace(/<[^>]*>/g, '').substring(0, 150)}...</p>
+                  </CardContent>
+                  <CardFooter className="border-t pt-4">
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-4">
+                        <button onClick={() => handleLike(article.id)} className="flex items-center gap-1 text-muted-foreground hover:text-hot-pink transition-colors"><Heart className="w-4 h-4" /><span className="text-sm">{article.likes || 0}</span></button>
+                        <span className="flex items-center gap-1 text-muted-foreground"><MessageCircle className="w-4 h-4" /><span className="text-sm">{article.comments?.length || 0}</span></span>
+                      </div>
+                      <Link to={"/articles/" + article.id}><Button variant="ghost" size="sm" className="text-royal-purple">Read More <ChevronRight className="w-4 h-4 ml-1" /></Button></Link>
+                    </div>
+                  </CardFooter>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+};
+
+// Article Page
+const ArticlePage = () => {
+  const articleId = useLocation().pathname.split('/').pop();
+  const [article, setArticle] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [comment, setComment] = useState({ author_name: '', content: '' });
+
+  useEffect(() => {
+    api.get("/articles/" + articleId).then(setArticle).catch(console.error).finally(() => setLoading(false));
+  }, [articleId]);
+
+  const handleLike = async () => {
+    try { await api.post("/articles/" + articleId + "/like"); setArticle({ ...article, likes: (article.likes || 0) + 1 }); } catch {}
+  };
+
+  const handleComment = async (e) => {
+    e.preventDefault();
+    if (!comment.author_name || !comment.content) return;
+    try {
+      const response = await api.post("/articles/" + articleId + "/comment", comment);
+      setArticle({ ...article, comments: [...(article.comments || []), response.comment] });
+      setComment({ author_name: '', content: '' });
+    } catch {}
+  };
+
+  if (loading) return <div className="min-h-screen pt-24 flex items-center justify-center gradient-bg-page"><motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity }} className="w-12 h-12 rounded-full border-4 border-royal-purple border-t-hot-pink" /></div>;
+  if (!article) return <div className="min-h-screen pt-24 flex items-center justify-center gradient-bg-page"><Card className="max-w-md text-center p-8 card-hover"><AlertCircle className="w-16 h-16 mx-auto mb-4 text-destructive" /><h2 className="text-2xl font-bold mb-2">Article Not Found</h2><p className="text-muted-foreground mb-4">The article doesn't exist.</p><Link to="/articles"><Button className="gradient-bg text-white">Back to Articles</Button></Link></Card></div>;
+
+  return (
+    <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit" className="min-h-screen pt-24 pb-12 gradient-bg-page">
+      <article className="container mx-auto px-4 max-w-3xl">
+        {article.cover_image && (<motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="rounded-2xl overflow-hidden mb-8 shadow-lg"><img src={article.cover_image} alt={article.title} className="w-full h-64 md:h-96 object-cover" /></motion.div>)}
+        <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-4xl md:text-5xl font-display font-bold mb-6">{article.title}</motion.h1>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-6 mb-8 pb-8 border-b">
+          <button onClick={handleLike} className="flex items-center gap-2 text-muted-foreground hover:text-hot-pink transition-colors"><Heart className="w-5 h-5" /><span>{article.likes || 0} likes</span></button>
+          <span className="flex items-center gap-2 text-muted-foreground"><MessageCircle className="w-5 h-5" /><span>{article.comments?.length || 0} comments</span></span>
+          <button onClick={() => navigator.share?.({ title: article.title, url: window.location.href })} className="flex items-center gap-2 text-muted-foreground hover:text-royal-purple transition-colors"><Share2 className="w-5 h-5" /><span>Share</span></button>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="prose prose-lg max-w-none mb-12" dangerouslySetInnerHTML={{ __html: article.content }} />
+        <div className="border-t pt-8">
+          <h3 className="text-2xl font-display font-bold mb-6">Comments</h3>
+          <form onSubmit={handleComment} className="mb-8">
+            <div className="grid gap-4">
+              <Input placeholder="Your name" value={comment.author_name} onChange={(e) => setComment({ ...comment, author_name: e.target.value })} className="border-purple-200" />
+              <Textarea placeholder="Write a comment..." value={comment.content} onChange={(e) => setComment({ ...comment, content: e.target.value })} rows={3} className="border-purple-200" />
+              <Button type="submit" className="gradient-bg text-white w-fit">Post Comment</Button>
+            </div>
+          </form>
+          <div className="space-y-4">
+            {article.comments?.map((c, i) => (
+              <Card key={c.id || i} className="card-hover"><CardContent className="pt-4"><div className="flex items-center gap-3 mb-2"><Avatar className="w-8 h-8"><AvatarFallback className="gradient-bg text-white text-xs">{c.author_name?.charAt(0)?.toUpperCase()}</AvatarFallback></Avatar><span className="font-medium">{c.author_name}</span><span className="text-sm text-muted-foreground">{new Date(c.created_at).toLocaleDateString()}</span></div><p className="text-foreground/80">{c.content}</p></CardContent></Card>
+            ))}
+          </div>
+        </div>
+      </article>
+    </motion.div>
+  );
+};
+
+// Gallery Page
+const GalleryPage = () => {
+  const [photos, setPhotos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+
+  useEffect(() => {
+    api.get('/gallery?visible_only=true').then(setPhotos).catch(console.error).finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit" className="min-h-screen pt-24 pb-12 gradient-bg-page">
+      <div className="container mx-auto px-4">
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-16">
+          <Badge className="mb-4 gradient-bg text-white px-4 py-1">Gallery</Badge>
+          <h1 className="text-4xl md:text-5xl font-display font-bold gradient-text mb-4">Photo Collection</h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">Moments captured through my lens</p>
+        </motion.div>
+        {loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">{[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="aspect-square rounded-xl" />)}</div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {photos.map((photo, index) => (
+              <motion.div key={photo.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.05 }} whileHover={{ scale: 1.03 }} className="group relative aspect-square rounded-xl overflow-hidden cursor-pointer shadow-card" onClick={() => setSelectedPhoto(photo)}>
+                <img src={photo.url} alt={photo.caption} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                {photo.caption && (<div className="absolute bottom-0 left-0 right-0 p-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"><p className="text-sm font-medium">{photo.caption}</p></div>)}
+              </motion.div>
+            ))}
+          </div>
+        )}
+        <Dialog open={!!selectedPhoto} onOpenChange={() => setSelectedPhoto(null)}>
+          <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/90">
+            {selectedPhoto && (<div className="relative"><img src={selectedPhoto.url} alt={selectedPhoto.caption} className="w-full h-auto max-h-[80vh] object-contain" />{selectedPhoto.caption && (<div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent"><p className="text-white text-lg">{selectedPhoto.caption}</p></div>)}</div>)}
+          </DialogContent>
+        </Dialog>
+      </div>
+    </motion.div>
+  );
+};
