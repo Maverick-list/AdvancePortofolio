@@ -1,0 +1,14 @@
+Vercel CLI 50.9.3
+WARN! Build not running on Vercel. System environment variables will not be available.
+WARN! Due to `builds` existing in your configuration file, the Build and Development Settings defined in your Project Settings will not apply. Learn More: https://vercel.link/unused-build-settings
+Installing dependencies...
+
+up to date in 13m
+
+277 packages are looking for funding
+  run `npm fund` for details
+Running "npm run build"
+
+> frontend@0.1.0 build
+> GENERATE_SOURCEMAP=false CI=false DISABLE_ESLINT_PLUGIN=true EXTEND_ESLINT=false craco build
+
