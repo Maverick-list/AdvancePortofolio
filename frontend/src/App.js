@@ -74,7 +74,7 @@ const MusicProvider = ({ children }) => {
     }
   };
 
-  const playTrack = (track) => {
+  const playTrack = useCallback((track) => {
     initAudio();
     if (audioRef.current) {
       audioRef.current.pause();
@@ -95,16 +95,16 @@ const MusicProvider = ({ children }) => {
     if (audioCtxRef.current.state === 'suspended') {
       audioCtxRef.current.resume();
     }
-  };
+  }, [volume]); // playNextTrack is added separately to avoid circular dependency if needed, but here it's fine if we handle it carefully. Actually playNextTrack needs playTrack.
 
-  const playNextTrack = () => {
+  const playNextTrack = useCallback(() => {
     if (tracks.length === 0) return;
     const currentIndex = currentTrack ? tracks.findIndex(t => t.id === currentTrack.id) : -1;
     const nextIndex = (currentIndex + 1) % tracks.length;
     playTrack(tracks[nextIndex]);
-  };
+  }, [tracks, currentTrack, playTrack]);
 
-  const togglePlayback = () => {
+  const togglePlayback = useCallback(() => {
     if (!audioRef.current) {
       if (tracks.length > 0) playTrack(tracks[0]);
       return;
@@ -118,11 +118,11 @@ const MusicProvider = ({ children }) => {
       audioRef.current.play().catch(() => { });
       setIsPlaying(true);
     }
-  };
+  }, [tracks, isPlaying, playTrack]);
 
-  const addTrack = (track) => setTracks([...tracks, { ...track, id: Date.now() }]);
-  const removeTrack = (id) => setTracks(tracks.filter(t => t.id !== id));
-  const updateTrack = (id, updates) => setTracks(tracks.map(t => t.id === id ? { ...t, ...updates } : t));
+  const addTrack = useCallback((track) => setTracks(prev => [...prev, { ...track, id: Date.now() }]), []);
+  const removeTrack = useCallback((id) => setTracks(prev => prev.filter(t => t.id !== id)), []);
+  const updateTrack = useCallback((id, updates) => setTracks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t)), []);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -130,12 +130,14 @@ const MusicProvider = ({ children }) => {
     }
   }, [volume]);
 
+  const value = useMemo(() => ({
+    tracks, currentTrack, isPlaying, volume, analyser: analyserRef.current,
+    setVolume, playTrack, togglePlayback,
+    addTrack, removeTrack, updateTrack
+  }), [tracks, currentTrack, isPlaying, volume, playTrack, togglePlayback, addTrack, removeTrack, updateTrack]);
+
   return (
-    <MusicContext.Provider value={{
-      tracks, currentTrack, isPlaying, volume, analyser: analyserRef.current,
-      setVolume, playTrack, togglePlayback,
-      addTrack, removeTrack, updateTrack
-    }}>
+    <MusicContext.Provider value={value}>
       {children}
     </MusicContext.Provider>
   );
@@ -544,6 +546,7 @@ const Typewriter = ({ text, delay = 50, className = "", onComplete }) => {
   const [currentText, setCurrentText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
   const audioRef = useRef(new Audio('https://www.soundjay.com/communication/typewriter-key-1.mp3'));
+  const completedRef = useRef(false);
 
   useEffect(() => {
     if (currentIndex < text.length) {
@@ -558,7 +561,8 @@ const Typewriter = ({ text, delay = 50, className = "", onComplete }) => {
         }
       }, delay);
       return () => clearTimeout(timeout);
-    } else if (onComplete) {
+    } else if (onComplete && !completedRef.current) {
+      completedRef.current = true;
       onComplete();
     }
   }, [currentIndex, delay, text, onComplete]);
@@ -567,7 +571,7 @@ const Typewriter = ({ text, delay = 50, className = "", onComplete }) => {
 };
 
 const LogoLoader = ({ onComplete }) => {
-  const { playTrack, tracks } = useMusic();
+  const [isExiting, setIsExiting] = useState(false);
 
   useEffect(() => {
     const startAudio = new Audio('https://www.soundjay.com/ambient/ambient-noise-01.mp3');
@@ -588,7 +592,7 @@ const LogoLoader = ({ onComplete }) => {
       clearTimeout(exitTimeout);
       clearTimeout(completeTimeout);
     };
-  }, [onComplete, playTrack, tracks]);
+  }, [onComplete]);
 
   return (
     <motion.div
@@ -829,7 +833,9 @@ const HomePage = () => {
   const { portfolio, loading } = usePortfolio();
   const { username } = useParams();
   const { tracks, playTrack, isPlaying } = useMusic();
-  // fetch handled by Provider now
+  const handleTypewriterComplete = useCallback(() => {
+    if (!isPlaying && tracks.length > 0) playTrack(tracks[0]);
+  }, [isPlaying, playTrack, tracks]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center gradient-bg-page"><motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity }} className="w-16 h-16 rounded-full border-4 border-royal-purple border-t-hot-pink" /></div>;
 
@@ -883,9 +889,7 @@ const HomePage = () => {
                 <Typewriter
                   text={portfolio?.bio || 'Passionate about building scalable applications and crafting intuitive user experiences.'}
                   delay={30}
-                  onComplete={() => {
-                    if (!isPlaying) playTrack(tracks[0]);
-                  }}
+                  onComplete={handleTypewriterComplete}
                 />
               </motion.div>
               <motion.div variants={fadeInUp} className="flex flex-wrap gap-4">
