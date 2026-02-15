@@ -1,0 +1,10 @@
+
+> frontend@0.1.0 build
+> GENERATE_SOURCEMAP=false CI=false craco build
+
+Creating an optimized production build...
+Failed to compile.
+
+[eslint] ETIMEDOUT: connection timed out, read
+
+
