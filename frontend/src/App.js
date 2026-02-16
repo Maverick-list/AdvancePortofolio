@@ -11,7 +11,7 @@ import {
   ChevronRight, Heart, MessageCircle, Share2, Calendar, Clock, Bell,
   Bot, Send, Trash2, Edit, Eye, EyeOff, Plus, Check, AlertCircle,
   Sparkles, Sun, Moon, ChevronDown, GripVertical, Download, Upload, CheckCircle2,
-  Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, Type, Zap, Music, Volume2, VolumeX, Pause, Play, Upload
+  Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, Type, Zap, Music, Volume2, VolumeX, Pause, Play
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
