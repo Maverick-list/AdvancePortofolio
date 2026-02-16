@@ -1,36 +1,20 @@
 import sys
 import os
 
-# Add the project root to Python path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add root directory to sys.path
+# On Vercel, the function directory is usually /var/task/api
+# We want /var/task to be in the path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
 
 try:
     from backend.server import app
-except Exception as e:
+except ImportError as e:
     from fastapi import FastAPI
-    from fastapi.responses import JSONResponse
-    import traceback
     app = FastAPI()
-    
-    @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
-    async def catch_all(path: str):
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        parent_dir = os.path.dirname(current_dir)
-        files_in_root = os.listdir(parent_dir) if os.path.exists(parent_dir) else []
-        return JSONResponse(
-            status_code=500,
-            content={
-                "error": f"Startup error: {str(e)}",
-                "traceback": traceback.format_exc(),
-                "path": path,
-                "debug": {
-                    "current_dir": current_dir,
-                    "parent_dir": parent_dir,
-                    "root_files": files_in_root,
-                    "sys_path": sys.path
-                }
-            }
-        )
+    @app.get("/api/health")
+    def health():
+        return {"status": "error", "message": f"Could not import backend.server: {str(e)}"}
 
-# This is necessary for Vercel to find the app instance
+# Vercel's @vercel/python builder looks for 'app' or 'handler'
 handler = app
